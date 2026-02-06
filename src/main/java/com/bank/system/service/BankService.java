@@ -4,45 +4,35 @@ import com.bank.system.exception.InsufficientFundsException;
 import com.bank.system.model.BankAccount;
 import com.bank.system.model.Customer;
 import com.bank.system.model.Transaction;
+import com.bank.system.model.User;
+import com.bank.system.repository.BankAccountRepository;
+import com.bank.system.repository.CustomerRepository;
+import com.bank.system.repository.TransactionRepository;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Optional;
 
 public class BankService {
-    // ConcurrentHashMap for thread-safe access to accounts
-    private Map<String, BankAccount> accounts = new ConcurrentHashMap<>();
-    private FileStorageService storageService = new FileStorageService();
+    private final BankAccountRepository accountRepository = new BankAccountRepository();
+    private final CustomerRepository customerRepository = new CustomerRepository();
+    private final TransactionRepository transactionRepository = new TransactionRepository();
 
-    public BankService() {
-        // Load data on startup
-        this.accounts = storageService.loadAccounts();
-        List<Transaction> transactions = storageService.loadTransactions();
+    public void createAccount(String accountId, User user, String name, String email, double initialBalance) {
+        Customer customer = new Customer(accountId, name, email);
+        customer.setUser(user);
+        customerRepository.save(customer);
 
-        // Replay transactions to history (balances are already loaded from accounts
-        // file)
-        for (Transaction tx : transactions) {
-            BankAccount account = accounts.get(tx.getAccountId());
-            if (account != null) {
-                account.addTransaction(tx);
-            }
-        }
-    }
-
-    public void createAccount(String accountId, String customerId, String name, String email, double initialBalance) {
-        Customer customer = new Customer(customerId, name, email);
         BankAccount account = new BankAccount(accountId, customer, initialBalance);
-        accounts.put(accountId, account);
-        storageService.saveAccounts(accounts); // Save state
+        accountRepository.save(account);
         System.out.println("Created account: " + account);
     }
 
     public BankAccount getAccount(String accountId) {
-        return accounts.get(accountId);
+        return accountRepository.findById(accountId).orElse(null);
     }
 
     public void processTransaction(Transaction transaction) throws InsufficientFundsException {
-        BankAccount account = accounts.get(transaction.getAccountId());
+        BankAccount account = transaction.getAccount();
         if (account == null) {
             System.err.println("Account not found for transaction: " + transaction.getTransactionId());
             return;
@@ -58,11 +48,10 @@ public class BankService {
         }
 
         account.addTransaction(transaction);
-        storageService.saveTransaction(transaction); // Append transaction
-        storageService.saveAccounts(accounts); // Update balances
+        accountRepository.save(account); // This will save account and transactions due to cascade
     }
 
-    public Map<String, BankAccount> getAllAccounts() {
-        return accounts;
+    public List<BankAccount> getAllAccounts() {
+        return accountRepository.findAll();
     }
 }

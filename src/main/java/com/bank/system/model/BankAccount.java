@@ -1,13 +1,29 @@
 package com.bank.system.model;
 
 import com.bank.system.exception.InsufficientFundsException;
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
+@Entity
+@Table(name = "bank_accounts")
 public class BankAccount {
+    @Id
+    @Column(name = "account_id")
     private String accountId;
+
+    @ManyToOne
+    @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
+
+    @Column(nullable = false)
     private double balance;
 
-    private java.util.List<Transaction> transactionHistory = new java.util.ArrayList<>();
+    @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Transaction> transactionHistory = new ArrayList<>();
+
+    public BankAccount() {
+    }
 
     public BankAccount(String accountId, Customer customer, double initialBalance) {
         this.accountId = accountId;
@@ -23,35 +39,35 @@ public class BankAccount {
         return customer;
     }
 
-    // Synchronized for thread safety
     public synchronized double getBalance() {
         return balance;
     }
 
     public synchronized void addTransaction(Transaction tx) {
         transactionHistory.add(tx);
+        tx.setAccount(this);
     }
 
-    public synchronized java.util.List<Transaction> getTransactionHistory() {
-        return new java.util.ArrayList<>(transactionHistory);
+    public synchronized List<Transaction> getTransactionHistory() {
+        return new ArrayList<>(transactionHistory);
     }
 
-    // Synchronized for thread safety
     public synchronized void deposit(double amount) {
         if (amount > 0) {
             this.balance += amount;
-            System.out.println(Thread.currentThread().getName() + " deposited: " + amount + " to " + accountId);
         }
     }
 
-    // Synchronized for thread safety
     public synchronized void withdraw(double amount) throws InsufficientFundsException {
         if (amount > balance) {
             throw new InsufficientFundsException(
                     "Insufficient funds for account " + accountId + ". Balance: " + balance + ", Requested: " + amount);
         }
         this.balance -= amount;
-        System.out.println(Thread.currentThread().getName() + " withdrew: " + amount + " from " + accountId);
+    }
+
+    public void setBalance(double balance) {
+        this.balance = balance;
     }
 
     @Override

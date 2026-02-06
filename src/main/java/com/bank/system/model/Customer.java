@@ -1,9 +1,26 @@
 package com.bank.system.model;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "customers")
 public class Customer {
+    @Id
+    @Column(name = "customer_id")
     private String customerId;
+
+    @Column(nullable = false)
     private String name;
+
+    @Column(nullable = false)
     private String email;
+
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    public Customer() {
+    }
 
     public Customer(String customerId, String name, String email) {
         this.customerId = customerId;
@@ -21,6 +38,22 @@ public class Customer {
 
     public String getEmail() {
         return email;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     @Override
